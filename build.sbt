@@ -21,10 +21,11 @@ libraryDependencies ++= Seq(
  "org.http4s"     %% "http4s-argonaut"     % Http4sVersion,
  "org.http4s"     %% "http4s-dsl"          % Http4sVersion,
  "ch.qos.logback" %  "logback-classic"     % "1.2.1",
- "org.tpolecat"   %% "doobie-core"      % "0.4.4",
- "org.tpolecat"   %% "doobie-hikari"      % "0.4.4",
- "org.xerial"     % "sqlite-jdbc" % "3.20.0",
+ "org.tpolecat"   %% "doobie-core"         % "0.4.4",
+ "org.tpolecat"   %% "doobie-hikari"       % "0.4.4",
+ "org.xerial"     % "sqlite-jdbc"          % "3.20.0",
+ "org.mindrot"    % "jbcrypt"              % "0.4",
 
- "org.scalatest"  %% "scalatest" % "3.0.1" % "test",
- "org.tpolecat"   %% "doobie-scalatest" % "0.4.4" % "test"
+ "org.scalatest"  %% "scalatest"           % "3.0.1" % "test",
+ "org.tpolecat"   %% "doobie-scalatest"    % "0.4.4" % "test"
 )
