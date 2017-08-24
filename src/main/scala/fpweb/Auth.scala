@@ -7,12 +7,11 @@ import org.http4s.server.AuthMiddleware
 import org.http4s.{Service, Request, Headers, AuthedService}
 import org.http4s.dsl._
 import org.slf4j.LoggerFactory
-import scalaz.{Kleisli, \/, -\/, \/-}
-import scalaz.syntax.applicative._
 import scalaz.concurrent.Task
-import scalaz.std.option._
-import scalaz.syntax.std.option._
+import scalaz._
+import Scalaz._
 
+import org.mindrot.jbcrypt.BCrypt
 
 object Auth {
   val log = LoggerFactory.getLogger(getClass)
@@ -38,8 +37,19 @@ object Auth {
       unpw <- extract(auth).leftMap(_.toString)
     } yield unpw
     unpw.traverse { case (un, pw) =>
-      log.info(s"Validating user: $un")
-      Task.delay(Model.User(1, un))
+      log.info(s"Validating user $un")
+      // TODO: Read user + salted pw from db
+      (Model.User(1, un), BCrypt.hashpw("password", BCrypt.gensalt), pw).pure[Task]
+    }.map {
+      _.map { case (user, hashed, candidate) =>
+        (user, BCrypt.checkpw(candidate, hashed))
+      }.flatMap {
+        case (user, true) =>
+          log.info(s"User ${user.userName} logged in")
+          \/-(user)
+        case (_, false) =>
+          -\/("Invalid password")
+        }
     }
   }
 
