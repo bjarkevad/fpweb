@@ -1,6 +1,6 @@
 package fpweb
 
-import scalaz.{Free, ~>}
+import scalaz.{ Monad, Free, Kleisli, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.function._
 import scalaz.effect.IO
@@ -8,10 +8,12 @@ import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.std.list._
 
+import doobie.imports._
+
 import Model._
 
 object Core {
-  sealed trait ServiceOp[A]
+ sealed trait ServiceOp[A]
   object ServiceOp {
     case class GetUser(userId: Int) extends ServiceOp[User]
     case class AddUser(user: User) extends ServiceOp[Int]
@@ -31,27 +33,33 @@ object Core {
     user <- getUser(id)
   } yield user
 
-  type TaskInterpreter[A] = Task[A]
-  val mockInterpreter: ServiceOp ~> TaskInterpreter =
-    new (ServiceOp ~> TaskInterpreter) {
+
+  // TODO: Name this better?
+  type KT[A] = Kleisli[Task, Transactor[Task], A]
+
+  val xa = DriverManagerTransactor[Task]("org.sqlite.JDBC", "jdbc:sqlite:fpweb.db")
+
+  def mockInterpreter: ServiceOp ~> KT =
+    new (ServiceOp ~> KT) {
       def apply[A](fa: ServiceOp[A]) =
         fa match {
           case ServiceOp.GetUser(userId)    =>
-            User(userId, "Mock user").point[TaskInterpreter]
-
+            Kleisli { xa  =>
+              User(userId, "Mock user").point[Task]
+            }
           case ServiceOp.AddUser(user)      =>
-            1.point[TaskInterpreter]
+            1.point[KT]
 
           case ServiceOp.DeleteUser(userId) =>
-            true.point[TaskInterpreter]
+            true.point[KT]
 
           case ServiceOp.GetAllUsers        =>
-            List.empty.point[TaskInterpreter]
+            List.empty.point[KT]
 
         }
     }
 
-  def runService[A](program: Service[A]): Task[A] =
+  def runService[A](program: Service[A]): KT[A] =
     program.foldMap(mockInterpreter)
 
   val myProgram = for {

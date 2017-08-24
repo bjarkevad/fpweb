@@ -13,13 +13,13 @@ object UserService {
   val service = HttpService {
     case GET -> Root / "users" =>
       for {
-        users <- Core.runService(Core.getAllUsers)
+        users <- Core.runService(Core.getAllUsers).apply(???)
         result <- Ok(users.asJson)
       } yield result
 
     case POST -> Root / "users" / IntVar(userId) =>
       for {
-        user <- Core.runService(Core.addAndGetUser(User(userId, "Test user")))
+        user <- Core.runService(Core.addAndGetUser(User(userId, "Test user"))).apply(???)
         result <- Ok(user.asJson)
       } yield result
   }
