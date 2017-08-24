@@ -10,7 +10,7 @@ import org.http4s.server.{Server, ServerApp}
 import org.http4s.server.blaze.BlazeBuilder
 
 
-object BlazeExample extends ServerApp {
+object FPWebServer extends ServerApp {
 
   val port : Int              = envOrNone("HTTP_PORT") map (_.toInt) getOrElse 8080
   val ip   : String           = "0.0.0.0"

@@ -33,13 +33,10 @@ object Core {
     user <- getUser(id)
   } yield user
 
-
   // TODO: Name this better?
   type KT[A] = Kleisli[Task, Transactor[Task], A]
 
-  val xa = DriverManagerTransactor[Task]("org.sqlite.JDBC", "jdbc:sqlite:fpweb.db")
-
-  def mockInterpreter: ServiceOp ~> KT =
+  def interpreter: ServiceOp ~> KT =
     new (ServiceOp ~> KT) {
       def apply[A](fa: ServiceOp[A]) =
         fa match {
@@ -47,6 +44,7 @@ object Core {
             Kleisli { xa  =>
               User(userId, "Mock user").point[Task]
             }
+
           case ServiceOp.AddUser(user)      =>
             1.point[KT]
 
@@ -55,12 +53,12 @@ object Core {
 
           case ServiceOp.GetAllUsers        =>
             List.empty.point[KT]
-
         }
     }
 
-  def runService[A](program: Service[A]): KT[A] =
-    program.foldMap(mockInterpreter)
+  def runService[A](program: Service[A]): Kleisli[Task, Transactor[Task], A] = {
+    program.foldMap(interpreter)
+  }
 
   val myProgram = for {
     users <- getAllUsers
