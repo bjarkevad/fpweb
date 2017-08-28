@@ -7,6 +7,7 @@ scalacOptions ++= Seq(
 )
 
 val Http4sVersion = "0.15.11a"
+val DoobieVersion = "0.4.4"
 
 libraryDependencies += "com.lihaoyi" % "ammonite" % "1.0.2" % "test" cross CrossVersion.full
 
@@ -21,11 +22,13 @@ libraryDependencies ++= Seq(
  "org.http4s"     %% "http4s-argonaut"     % Http4sVersion,
  "org.http4s"     %% "http4s-dsl"          % Http4sVersion,
  "ch.qos.logback" %  "logback-classic"     % "1.2.1",
- "org.tpolecat"   %% "doobie-core"         % "0.4.4",
- "org.tpolecat"   %% "doobie-hikari"       % "0.4.4",
- "org.xerial"     % "sqlite-jdbc"          % "3.20.0",
- "org.mindrot"    % "jbcrypt"              % "0.4",
+ "org.tpolecat"   %% "doobie-core"         % DoobieVersion,
+ "org.tpolecat"   %% "doobie-postgres"     % DoobieVersion,
+ "org.tpolecat"   %% "doobie-hikari"       % DoobieVersion,
+ "org.mindrot"    %  "jbcrypt"             % "0.4",
+ "org.postgresql" %  "postgresql"          % "42.1.3",
 
  "org.scalatest"  %% "scalatest"           % "3.0.1" % "test",
- "org.tpolecat"   %% "doobie-scalatest"    % "0.4.4" % "test"
+ "org.tpolecat"   %% "doobie-scalatest"    % DoobieVersion % "test"
+
 )

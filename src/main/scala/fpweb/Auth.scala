@@ -1,6 +1,6 @@
 package fpweb
 
-import doobie.imports.Transactor
+import doobie.imports._
 import org.http4s
 import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
@@ -32,24 +32,29 @@ object Auth {
   }
 
   def authenticate(xa: Transactor[Task])(headers: Headers): Task[String \/ Model.User] = {
-    val unpw = for {
+    val unpw: String \/ (String, String) = for {
       auth <- headers.get(Authorization).toRightDisjunction("Missing authorization header")
       unpw <- extract(auth).leftMap(_.toString)
     } yield unpw
-    unpw.traverse { case (un, pw) =>
-      log.info(s"Validating user $un")
-      // TODO: Read user + salted pw from db
-      (Model.User(1, un), BCrypt.hashpw("password", BCrypt.gensalt), pw).pure[Task]
-    }.map {
-      _.map { case (user, hashed, candidate) =>
-        (user, BCrypt.checkpw(candidate, hashed))
-      }.flatMap {
-        case (user, true) =>
-          log.info(s"User ${user.userName} logged in")
-          \/-(user)
-        case (_, false) =>
-          -\/("Invalid password")
-        }
+
+    unpw match {
+      case err@(-\/(_)) => err.point[Task]
+      case \/-((un, pw)) =>
+        UserRepository.getPw(un)
+          .option
+          .transact(xa)
+        // Don't leak this to clients in the real world
+          .map {
+            _.toRightDisjunction(s"User '$un' not found")
+              .map { case (user, hashed) => (user, BCrypt.checkpw(pw, hashed)) }
+              .flatMap {
+                case (user, true) =>
+                  log.info(s"User '${user.userName}' authenticated in")
+                    \/-(user)
+                case (_, false) =>
+                  -\/("Invalid password")
+              }
+          }
     }
   }
 

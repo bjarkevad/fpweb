@@ -15,24 +15,14 @@ import scalaz.syntax.monad._
 import Model._
 
 object UserService {
-  val xa = DriverManagerTransactor[Task]("org.sqlite.JDBC", "jdbc:sqlite:fpweb.db")
-  val i = Database.init(xa)
+  val xa = DriverManagerTransactor[Task]("org.postgresql.Driver", "jdbc:postgresql:fpweb", "postgres", "")
 
-  val service = Auth.middleware(xa)(
-    AuthedService[Model.User] {
-      case GET -> Root / "me"  as user =>
-        Ok(user.asJson)
-
-      case GET -> Root / "users" as user =>
-        for {
-          users <- Core.runService(Core.getAllUsers)(xa)
-          result <- Ok(users.asJson)
-        } yield result
-
-      case POST -> Root / "users" / IntVar(userId) as user =>
-        for {
-          user <- Core.runService(Core.addAndGetUser(User(userId, "Test user")))(xa)
-          result <- Ok(user.asJson)
-        } yield result
-  })
+  val service = HttpService {
+    case req @ POST -> Root / "users" =>
+      for {
+        newUser <- req.as(jsonOf[NewUser])
+        user <- Core.runService(Core.addAndGetUser(newUser))(xa)
+        result <- Ok(user.asJson)
+      } yield result
+  }
 }

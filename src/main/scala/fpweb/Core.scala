@@ -9,6 +9,7 @@ import scalaz.std.option._
 import scalaz.std.list._
 
 import doobie.imports._
+import org.mindrot.jbcrypt.BCrypt
 
 import Model._
 
@@ -16,7 +17,7 @@ object Core {
  sealed trait ServiceOp[A]
   object ServiceOp {
     case class GetUser(userId: Int) extends ServiceOp[User]
-    case class AddUser(user: User) extends ServiceOp[Int]
+    case class AddUser(user: NewUser) extends ServiceOp[Int]
     case class DeleteUser(userId: Int) extends ServiceOp[Boolean]
     case object GetAllUsers extends ServiceOp [List[User]]
   }
@@ -24,11 +25,11 @@ object Core {
   type Service[A] = Free[ServiceOp, A]
 
   def getUser(userId: Int) = Free.liftF(ServiceOp.GetUser(userId))
-  def addUser(user: User) = Free.liftF(ServiceOp.AddUser(user))
+  def addUser(user: NewUser) = Free.liftF(ServiceOp.AddUser(user))
   def deleteUser(userId: Int) = Free.liftF(ServiceOp.DeleteUser(userId))
   val getAllUsers = Free.liftF(ServiceOp.GetAllUsers)
 
-  def addAndGetUser(user: User) = for {
+  def addAndGetUser(user: NewUser) = for {
     id <- addUser(user)
     user <- getUser(id)
   } yield user
@@ -42,11 +43,18 @@ object Core {
         fa match {
           case ServiceOp.GetUser(userId)    =>
             Kleisli { xa  =>
-              User(userId, "Mock user").point[Task]
+              UserRepository.get(userId)
+                .unique
+                .transact(xa)
             }
 
           case ServiceOp.AddUser(user)      =>
-            1.point[KT]
+            Kleisli { xa =>
+              val hashedPassword = BCrypt.hashpw(user.password, BCrypt.gensalt)
+              UserRepository.insert(user.userName, hashedPassword)
+                .withUniqueGeneratedKeys[Int]("user_id")
+                .transact(xa)
+            }
 
           case ServiceOp.DeleteUser(userId) =>
             true.point[KT]
